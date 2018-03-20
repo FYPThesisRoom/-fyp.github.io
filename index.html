@@ -1,0 +1,170 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using MySql.Data.MySqlClient;
+using System.Data;
+using System.Configuration;
+using System.Web.Configuration;
+using System.IO;
+using System.Drawing;
+using System.Web.Security;
+
+namespace T3RMS.Login
+{
+    public partial class login : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                txt_placeholder();
+            }
+        }
+
+        protected void txt_placeholder()
+        {
+            txt_email.Attributes.Add("placeholder", "Email");
+            txt_password.Attributes.Add("placeholder", "Password");
+        }
+
+        protected void login_click(object sender, EventArgs e)
+        {
+            MySqlConnection connect = new MySqlConnection(WebConfigurationManager.ConnectionStrings["connect_database"].ConnectionString);
+            connect.Open();
+            MySqlCommand cmd = new MySqlCommand("SELECT * FROM user WHERE user_email = @user_email", connect);
+            cmd.Parameters.AddWithValue("@user_email", txt_email.Text);
+            //cmd.Parameters.AddWithValue("@user_password", txt_password.Text);
+            
+            bool isHasRow = false;
+            using (MySqlDataReader dr = cmd.ExecuteReader())
+            {
+                isHasRow = (dr != null && dr.HasRows);
+            }
+
+            if (isHasRow) // IF IS VALID USER
+            {
+                if (txt_email.Text != string.Empty && txt_password.Text != string.Empty) // IF BOTH EMAIL AND PASSWORD TEXTBOX NOT EMPTY
+                {
+                    MySqlCommand command = new MySqlCommand("SELECT * FROM user WHERE user_email = @user_email AND user_password = @user_password", connect);
+                    command.Parameters.AddWithValue("@user_email", txt_email.Text);
+                    command.Parameters.AddWithValue("@user_password", txt_password.Text);
+                    bool isCorrectPassword = false;
+                    using (MySqlDataReader dr = command.ExecuteReader())
+                    {
+                        isCorrectPassword = (dr != null && dr.HasRows);
+                    }
+
+                    if (isCorrectPassword) // IF PASSWORD IS CORRECT
+                    {
+                        MySqlCommand comd = new MySqlCommand("SELECT * FROM user WHERE user_email = @user_email AND user_password = @user_password", connect);
+                        comd.Parameters.AddWithValue("@user_email", txt_email.Text);
+                        comd.Parameters.AddWithValue("@user_password", txt_password.Text);
+                        MySqlDataReader dread = command.ExecuteReader();
+                        dread.Read();
+                        string usercode = dread["user_code"].ToString();
+                        string username = dread["user_name"].ToString();
+                        string user_role = dread["user_role"].ToString();
+
+                        if (user_role == "R1") // if is admin
+                        {
+                            FormsAuthentication.RedirectFromLoginPage(txt_email.Text, false);
+                            //FormsAuthentication.SetAuthCookie(txt_email.Text, false);
+                            Session["user_name"] = username;
+                            Session["user_code"] = usercode;
+                            Session["role"] = "R1";
+
+                            string ReturnUrl = Convert.ToString(Request.QueryString["url"]);
+                            if (!string.IsNullOrEmpty(Request.QueryString["ReturnUrl"]))
+                            {
+                                /*string redirect_from_logout = Session["from_logout"].ToString();
+                                if (redirect_from_logout != string.Empty) // IF REDIRECTED FROM LOGOUT
+                                {
+                                    Response.Redirect("~/Dashboard/Dashboard.aspx");
+                                }
+                                else // IF NOT REDIRECTED FROM LOGOUT
+                                {
+                                    Response.Redirect(Request.QueryString["ReturnUrl"]);
+                                }*/
+
+                                Response.Redirect(Request.QueryString["ReturnUrl"]);
+                            }
+                            else
+                            {
+                                Response.Redirect("~/Dashboard/Dashboard.aspx");
+                            }
+                        }
+                        else if (user_role == "R2") // if is normal user
+                        {
+                            FormsAuthentication.RedirectFromLoginPage(txt_email.Text, false);
+                            //FormsAuthentication.SetAuthCookie(txt_email.Text, false);
+                            Session["user_name"] = username;
+                            Session["user_code"] = usercode;
+                            Session["role"] = "R2";
+
+                            string ReturnUrl = Convert.ToString(Request.QueryString["url"]);
+                            if (!string.IsNullOrEmpty(Request.QueryString["ReturnUrl"]))
+                            {
+                                /*string redirect_from_logout = Session["from_logout"].ToString();
+                                if (redirect_from_logout != string.Empty) // IF REDIRECTED FROM LOGOUT
+                                {
+                                    Response.Redirect("~/Thesis/Thesis_Default.aspx");
+                                }
+                                else // IF NOT REDIRECTED FROM LOGOUT
+                                {
+                                    Response.Redirect(Request.QueryString["ReturnUrl"]);
+                                }*/
+
+                                Response.Redirect(Request.QueryString["ReturnUrl"]);
+                            }
+                            else
+                            {
+                                Response.Redirect("~/Thesis/Thesis_Default.aspx");
+                            }
+                        }
+                    }
+                    else // IF PASSWORD INCORRECT
+                    {
+                        txt_password.BackColor = Color.Pink;
+                        lbl_warning.Text = "Password is incorrect!";
+                    } 
+                }
+                else // IF ANY OF THE TEXTBOX IS EMPTY
+                {
+                    if (txt_email.Text == string.Empty)
+                    {
+                        txt_email.BackColor = Color.Pink;
+
+                        lbl_warning.Text = "Email is required.";
+                    }
+                    else
+                    {
+                        txt_email.BackColor = Color.White;
+                    }
+
+                    if (txt_password.Text == string.Empty)
+                    {
+                        txt_password.BackColor = Color.Pink;
+                        lbl_warning.Text = "Password is required.";
+                    }
+                    else
+                    {
+                        txt_password.BackColor = Color.White;
+                    }
+                }
+                
+            }
+            else // if invalid user
+            {
+                txt_email.BackColor = System.Drawing.Color.Pink;
+                txt_password.BackColor = System.Drawing.Color.Pink;
+
+                lbl_warning.Text = "You are not a valid user. Please Sign Up now.";
+            }
+        }
+
+        
+    }
+}
